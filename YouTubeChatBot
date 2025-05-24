@@ -1,0 +1,64 @@
+import random
+import time
+import asyncio
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
+# Configuration
+CLIENT_SECRETS_FILE = "client_secrets.json"
+SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
+STREAM_ID = "43OplZQAmzM"  
+MESSAGES = [
+    "heyyy",
+    "lol", "OMG", "LFG!!!",
+    "This riff is FIRE! ??", "Love the vibes! More like this! ??",
+    "When’s the next album drop? ??", "Chills from that melody! ??",
+    "Keep rocking it, Alvalanker! ??"
+]
+
+async def post_chat_message(youtube, live_chat_id, message):
+    try:
+        youtube.liveChatMessages().insert(
+            part="snippet",
+            body={
+                "snippet": {
+                    "liveChatId": live_chat_id,
+                    "type": "textMessageEvent",
+                    "textMessageDetails": {"messageText": message}
+                }
+            }
+        ).execute()
+        print(f"Posted: {message}")
+    except HttpError as e:
+        print(f"Error posting message: {e}")
+
+async def main():
+    # Authenticate
+    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
+    credentials = flow.run_local_server(port=0)
+    youtube = build("youtube", "v3", credentials=credentials)
+
+    # Get live chat ID
+    try:
+        request = youtube.liveBroadcasts().list(part="snippet", id=STREAM_ID)
+        response = request.execute()
+        if not response["items"]:
+            print("Error: Stream not found. Check STREAM_ID.")
+            return
+        live_chat_id = response["items"][0]["snippet"]["liveChatId"]
+    except HttpError as e:
+        print(f"Error fetching live chat ID: {e}")
+        return
+
+    # Post initial message
+    await post_chat_message(youtube, live_chat_id, "heyyy")
+
+    # Periodically post random messages
+    while True:
+        message = random.choice(MESSAGES[1:])
+        await post_chat_message(youtube, live_chat_id, message)
+        await asyncio.sleep(random.uniform(120, 180))
+
+if __name__ == "__main__":
+    asyncio.run(main())
