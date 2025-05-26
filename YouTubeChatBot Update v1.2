@@ -1,0 +1,88 @@
+mport random
+import time
+import asyncio
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
+# Configuration
+CLIENT_SECRETS_FILE = "client_secrets.json"  # Update if using original filename (e.g., "client_secret_9876543210xyz.json")
+SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
+STREAM_ID = "xyz123"  # Replace with target stream's video ID
+MESSAGES = [
+    "Alva: heyyy",
+    "Alva: lol",
+    "Alva: OMG",
+    "Alva: LFG!!!",
+    "Alva: This riff is FIRE!",
+    "Alva: Love the vibes! More like this!",
+    "Alva: When’s the next album drop?",
+    "Alva: Chills from that melody!",
+    "Alva: Keep rocking it!",
+    "Alva: Killer solo! 🎸",
+    "Alva: That groove is unreal!",
+    "Alva: Why’d the guitar go to therapy? Too many string attachments! 😜",
+    "Alva: How do you tune a fish? With a guitar! 🐟",
+    "Alva: Why was the piano embarrassed? It got caught with its keys down! 🎹",
+    "Alva: What’s a guitarist’s favorite cheese? Shreddar! 🧀",
+    "Alva: Jimi Hendrix: 'Music doesn’t lie. If there’s something to be changed, it’s not in the music.'",
+    "Alva: Kurt Cobain: 'I’d rather be hated for who I am than loved for who I’m not.'",
+    "Alva: Jimmy Page: 'I believe every guitar player inherently has something unique about their playing.'",
+    "Alva: Eddie Van Halen: 'To me, the ultimate thing is to play from the heart.'",
+    "Alva: Wolfgang Amadeus Mozart: 'The music is not in the notes, but in the silence between.'",
+    "Alva: Johann Sebastian Bach: 'The aim and final end of all music should be none other than the glory of God.'",
+    "Alva: Elon Musk: 'I think it’s possible for ordinary people to choose to be extraordinary.'",
+    "Alva: Steve Jobs: 'Innovation distinguishes between a leader and a follower.'",
+    "Alva: Ada Lovelace: 'Imagination is the Discovering Faculty, pre-eminently.'",
+    "Alva: Sun Tzu: 'In the midst of chaos, there is also opportunity.'",
+    "Alva: Dwight D. Eisenhower: 'Plans are nothing; planning is everything.'",
+    "Alva: Why don’t coders play guitar? They’re too busy debugging strings! 💻",
+    "Alva: This stream is giving me life! 🚀",
+    "Alva: Anyone else headbanging to this? 🤘"
+]
+
+async def post_chat_message(youtube, live_chat_id, message):
+    try:
+        youtube.liveChatMessages().insert(
+            part="snippet",
+            body={
+                "snippet": {
+                    "liveChatId": live_chat_id,
+                    "type": "textMessageEvent",
+                    "textMessageDetails": {"messageText": message}
+                }
+            }
+        ).execute()
+        print(f"Posted: {message}")
+    except HttpError as e:
+        print(f"Error posting message: {e}")
+
+async def main():
+    # Authenticate
+    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
+    credentials = flow.run_local_server(port=0)
+    youtube = build("youtube", "v3", credentials=credentials)
+
+    # Get live chat ID
+    try:
+        request = youtube.liveBroadcasts().list(part="snippet", id=STREAM_ID)
+        response = request.execute()
+        if not response["items"]:
+            print("Error: Stream not found. Check STREAM_ID.")
+            return
+        live_chat_id = response["items"][0]["snippet"]["liveChatId"]
+    except HttpError as e:
+        print(f"Error fetching live chat ID: {e}")
+        return
+
+    # Post initial message
+    await post_chat_message(youtube, live_chat_id, "Alva: heyyy")
+
+    # Periodically post random messages
+    while True:
+        message = random.choice(MESSAGES[1:])  # Exclude initial "heyyy"
+        await post_chat_message(youtube, live_chat_id, message)
+        await asyncio.sleep(random.uniform(120, 300))  # 2–5 minutes
+
+if __name__ == "__main__":
+    asyncio.run(main())
